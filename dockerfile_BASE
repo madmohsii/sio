@@ -1,0 +1,87 @@
+# #####################################################
+# LABO KALI - LAB1 - IMAGE BASE
+# #####################################################
+#
+# Ce Dockerfile construit une image Docker 
+# basée sur Debian 12 avec
+# un accès SSH
+# systemd
+# les locales et le timezone en français
+# un utilisateur non root et sudo
+# des paquets de base utiles
+
+FROM debian:bookworm
+
+ARG USERNAME
+ARG USERPASS
+
+ENV container docker
+ENV LANG=fr_FR.UTF-8 
+
+# Installation des paquets
+# Voir quels sont les paquets à ajouter communs à toutes les debian
+RUN apt update -q --fix-missing \
+    && apt upgrade -y \
+    && DEBIAN_FRONTEND=noninteractive apt -y install --no-install-recommends \
+    vim \
+    nano \
+    sudo \
+    iproute2 \
+    iputils-ping \
+    iputils-tracepath \
+    net-tools \
+    dnsutils \
+    wget \
+    curl \
+    cron \
+    anacron \
+    nmap \
+    tcpdump \
+    git \
+    openssh-server \
+    locales \
+    systemd \
+    systemd-sysv \   
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/* \
+    /var/log/alternatives.log \
+    /var/log/apt/history.log \
+    /var/log/apt/term.log \
+    /var/log/dpkg.log \
+    /tmp/* /var/tmp/*
+
+# Configuration de la Timezone Europe/Paris et des locales 
+RUN rm /etc/localtime \
+    && ln -s /usr/share/zoneinfo/Europe/Paris /etc/localtime \
+    && dpkg-reconfigure --frontend noninteractive tzdata \
+    && sed -i 's/# fr_FR.UTF-8 UTF-8/fr_FR.UTF-8 UTF-8/' /etc/locale.gen \
+    && echo 'LANG=${LANG}'>/etc/default/locale \
+    && dpkg-reconfigure --frontend=noninteractive locales \
+    && update-locale LANG=${LANG}
+
+# Configuration de systemd
+RUN rm -f /lib/systemd/system/multi-user.target.wants/*;\
+    rm -f /etc/systemd/system/*.wants/*;\
+    rm -f /lib/systemd/system/local-fs.target.wants/*; \
+    rm -f /lib/systemd/system/sockets.target.wants/*udev*; \
+    rm -f /lib/systemd/system/sockets.target.wants/*initctl*; \
+    rm -f  /lib/systemd/system/sysinit.target.wants/systemd-tmpfiles-setup*;\
+    rm -f /lib/systemd/system/systemd-update-utmp*;
+
+RUN systemctl set-default multi-user.target
+#ENV init=/lib/systemd/systemd
+#VOLUME [ "/sys/fs/cgroup", "/run", "/run/lock", "/tmp" ]
+
+# Creation d'un utilisateur "non root"
+RUN useradd -m -s /bin/bash -G sudo ${USERNAME} \
+    && echo "${USERNAME}:${USERPASS}" | chpasswd
+
+# Activation de SSH
+RUN systemctl enable ssh.service
+
+# Déclaration du port exposé pour SSH
+EXPOSE 22/tcp
+
+STOPSIGNAL SIGRTMIN+3
+#CMD [ "/sbin/init" ]
+CMD [ "/lib/systemd/systemd", "log-level=info", "unit=sysinit.target" ]

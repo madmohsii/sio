@@ -1,0 +1,13 @@
+$TTL 3600   ; 1 heure
+@		IN	SOA	srvssh.local.sio.fr. postmaster.local.sio.fr. (
+		2021030801		; Serial
+			    1D		; Refresh
+			    1H		; Retry
+			    1W		; Expire
+			    3H )	; Negative Cache TTL
+
+@	    IN	    NS	srvssh.local.sio.fr.
+
+srvssh.local.sio.fr.  IN      A   192.168.56.10
+clissh.local.sio.fr.  IN      A   192.168.56.11
+routeur.local.sio.fr. IN      A   192.168.56.254

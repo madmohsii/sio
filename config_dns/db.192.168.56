@@ -1,0 +1,13 @@
+$TTL 3600   ; 1 heure
+@	IN	SOA	srvssh.local.sio.fr. postmaster.local.sio.fr. (
+		 2020033001		; Serial
+			 604800		; Refresh
+			  86400		; Retry
+			2419200		; Expire
+			 604800 )	; Negative Cache TTL
+
+@   IN   NS	srvssh.local.sio.fr.
+
+10.56.168.192.in-addr.arpa     IN   PTR srvssh.local.sio.fr.
+11.56.168.192.in-addr.arpa     IN   PTR clissh.local.sio.fr.
+254.56.168.192.in-addr.arpa    IN   PTR routeur.local.sio.fr.

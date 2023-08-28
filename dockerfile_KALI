@@ -1,0 +1,110 @@
+# #####################################################
+# LABO KALI - LAB1 - IMAGE KALI
+# #####################################################
+#
+# Ce Dockerfile construit une image Docker de Kali Linux
+# avec l'environnement de bureau XFCE accessible via RDP
+# avec un accès SSH
+# avec systemd
+# avec création d'un utilisateur non root
+
+FROM kalilinux/kali-rolling
+
+ARG USERNAME
+ARG USERPASS
+ARG KALI_PKG
+ENV DESKTOP_KALI_PKG=kali-desktop-${KALI_PKG}
+ENV META_KALI_PKG=kali-linux-${KALI_PKG}
+ENV container docker
+ENV LANG=fr_FR.UTF-8 
+
+# Installation des paquets
+RUN apt update -q --fix-missing \
+    && apt upgrade -y \
+    && DEBIAN_FRONTEND=noninteractive apt -y install --no-install-recommends \
+    sudo \
+    vim \
+    nano \
+    wget \
+    curl \
+    git \
+    iproute2 \
+    iputils-ping \
+    iputils-tracepath \
+    net-tools \
+    dnsutils \
+    iptables \
+    dbus-x11 \
+    xinit \
+    openssh-server \
+    locales \
+    xorg \
+    xorgxrdp \
+    xrdp \
+    systemd \
+    systemd-sysv \
+    ${DESKTOP_KALI_PKG} \
+    ${META_KALI_PKG} \
+    kali-desktop-xfce \
+    ettercap-graphical \
+    wireshark \
+    nmap \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt clean
+
+# Configuration de la Timezone Europe/Paris et des locales 
+RUN rm /etc/localtime \
+    && ln -s /usr/share/zoneinfo/Europe/Paris /etc/localtime \
+    && dpkg-reconfigure --frontend noninteractive tzdata \
+    && sed -i 's/# fr_FR.UTF-8 UTF-8/fr_FR.UTF-8 UTF-8/' /etc/locale.gen \
+    && echo 'LANG=${LANG}'>/etc/default/locale \
+    && dpkg-reconfigure --frontend=noninteractive locales \
+    && update-locale LANG=${LANG}
+
+# Configuration de systemd
+RUN rm -f /lib/systemd/system/multi-user.target.wants/*;\
+    rm -f /etc/systemd/system/*.wants/*;\
+    rm -f /lib/systemd/system/local-fs.target.wants/*; \
+    rm -f /lib/systemd/system/sockets.target.wants/*udev*; \
+    rm -f /lib/systemd/system/sockets.target.wants/*initctl*; \
+    rm -f  /lib/systemd/system/sysinit.target.wants/systemd-tmpfiles-setup*;\
+    rm -f /lib/systemd/system/systemd-update-utmp*;
+
+RUN systemctl set-default multi-user.target
+
+# Activation de SSH
+RUN systemctl enable ssh.service
+
+# Activation de RDP
+RUN systemctl enable xrdp.service
+
+# Déclaration des ports exposés
+EXPOSE 22/tcp
+EXPOSE 3389/tcp
+
+# Creation d'un utilisateur "non root"
+RUN useradd -m -s /bin/bash -G sudo ${USERNAME} \
+    && echo "${USERNAME}:${USERPASS}" | chpasswd
+
+RUN adduser xrdp ssl-cert \
+    && echo xfce4-session > /home/${USERNAME}/.xsession \
+    && chown ${USERNAME}.${USERNAME} /home/${USERNAME}/.xsession \
+    && chmod +x /home/${USERNAME}/.xsession
+
+# Désactivation du paramètre Xfce Power Management qui contrôle la gestion de l'alimentation de l'affichage
+RUN rm /etc/xdg/autostart/xfce4-power-manager.desktop
+RUN if [ -e /etc/xdg/xfce4/panel/default.xml ] ; \
+    then \
+    sed -i s/power/fail/ /etc/xdg/xfce4/panel/default.xml ; \
+    fi
+
+# Autorisation pour wireshark (mais ne fonctionne pas)
+# On est toujours obligé de faire un dpkg-reconfigure wireshark-common
+RUN sudo groupadd -r wireshark
+RUN usermod -a -G wireshark ${USERNAME}
+
+#ENTRYPOINT ["/bin/bash"]
+#CMD ["/startkali.sh"]
+STOPSIGNAL SIGRTMIN+3
+#CMD [ "/sbin/init" ]
+CMD [ "/lib/systemd/systemd", "log-level=info", "unit=sysinit.target" ]

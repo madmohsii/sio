@@ -1,0 +1,26 @@
+# #####################################################
+# LABO KALI - LAB1 - IMAGE ROUTEUR
+# #####################################################
+#
+# Ce Dockerfile construit l'image du routeur 
+# basée sur l'image de base
+# Ajout d'iptables
+
+ARG IMAGE_BASE
+
+FROM ${IMAGE_BASE}
+
+# Installation des paquets
+RUN apt update -q --fix-missing \
+    && apt upgrade -y \
+    && DEBIAN_FRONTEND=noninteractive apt -y install --no-install-recommends \
+    iptables \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/* \
+    /var/log/alternatives.log \
+    /var/log/apt/history.log \
+    /var/log/apt/term.log \
+    /var/log/dpkg.log \
+    /tmp/* /var/tmp/*
+
+CMD [ "/lib/systemd/systemd", "log-level=info", "unit=sysinit.target" ]
