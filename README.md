@@ -3,6 +3,7 @@
 ## Activation du lab
 
 Le script "active_lab1.sh" crée un laboratoire opérationnel (en créant le réseau et les 4 conteneurs pré-configurés) correspondant au réseau suivant :
+![Schéma réseau du laboratoire 1 - Kali-Linux](schemaReseauLab1_docker.drawio.png "Schéma réseau du laboratoire 1 - Kali-Linux").
 
 Il est possible de personnaliser le laboratoire en modifiant les variables (fichier "variables).
 
