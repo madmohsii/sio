@@ -2,9 +2,11 @@
 
 ## Activation du lab
 
-1. Récupérer les scripts via git clone.
-2. Se déplacer dans le dossier créé.
-3. Lancer Le script "active_lab1.sh" (bash active_lab1.sh) qui va créer un laboratoire opérationnel (en créant le réseau et les 4 conteneurs pré-configurés) correspondant au schéma suivant :
+Sur un poste où Docker est installé :
+Récupérer les scripts via git clone.
+1. Se déplacer dans le dossier créé.
+1. Lancer Le script "active_lab1.sh" (bash active_lab1.sh) qui va créer un laboratoire opérationnel (en créant le réseau et les 4 conteneurs pré-configurés) correspondant au schéma suivant :
+
 ![Schéma réseau du laboratoire 1 - Kali-Linux](schemaReseauLab1_docker.drawio.png "Schéma réseau du laboratoire 1 - Kali-Linux").
 
 > Il est possible de personnaliser le laboratoire en modifiant les variables (fichier "variables").
