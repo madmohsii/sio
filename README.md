@@ -3,7 +3,8 @@
 ## Activation du lab
 
 Sur un poste où Docker est installé :
-Récupérer les scripts via git clone.
+
+1. Récupérer les scripts via git clone.
 1. Se déplacer dans le dossier créé.
 1. Lancer Le script "active_lab1.sh" (bash active_lab1.sh) qui va créer un laboratoire opérationnel (en créant le réseau et les 4 conteneurs pré-configurés) correspondant au schéma suivant :
 
