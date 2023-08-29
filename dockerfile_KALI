@@ -103,8 +103,6 @@ RUN if [ -e /etc/xdg/xfce4/panel/default.xml ] ; \
 RUN sudo groupadd -r wireshark
 RUN usermod -a -G wireshark ${USERNAME}
 
-#ENTRYPOINT ["/bin/bash"]
-#CMD ["/startkali.sh"]
 STOPSIGNAL SIGRTMIN+3
-#CMD [ "/sbin/init" ]
+
 CMD [ "/lib/systemd/systemd", "log-level=info", "unit=sysinit.target" ]
