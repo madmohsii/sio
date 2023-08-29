@@ -5,7 +5,7 @@
 # Import du fichier des variables
 # Du moment que les images sont disponibles sur le docker hub
 # Recopier éventuellement ici les variables pour ne donner aux étudiants que ce script
-#wget https://forge.aeif.fr/btssio-labos-kali/lab1/-/raw/main/variables
+
 source ./variables
 
 # Création du réseau interne du LAB
@@ -53,6 +53,9 @@ MODIF_PASSERELLE() {
 
 # --pull always récupère une nouvelle image si elle existe avant de lancer le conteneur
 
+# Pour pouvoir accéder de l'extérieur de l'hôte aux serveurs SSH et RDP, la configuration des redirections
+# a été réalisé au niveau du routeur
+
 echo -e "\nCréation des conteneurs (après avoir supprimé les éventuels conteneurs existants)."
 # Suppression éventuelle des conteneurs (sans suppression des volumes)
 for conteneur in "$ROUTEUR" "$KALI" "$SERVEUR" "$CLIENT"; do
@@ -72,6 +75,11 @@ docker run --name "$ROUTEUR" \
     --dns "$IP_SERVEUR" \
     --dns-search "$DOMAINE" \
     -p "$SSH_PORT_ROUTEUR":22 \
+    -p "$SSH_PORT_SERVEUR":"$SSH_PORT_SERVEUR" \
+    -p "$SSH_PORT_CLIENT":"$SSH_PORT_CLIENT" \
+    -p "$SSH_PORT_KALI":"$SSH_PORT_KALI" \
+    -p "$RDP_PORT_CLIENT":"$RDP_PORT_CLIENT" \
+    -p "$RDP_PORT_KALI":"$RDP_PORT_KALI" \
     -t \
     -d \
     --tmpfs /tmp \
@@ -84,22 +92,27 @@ docker run --name "$ROUTEUR" \
     -v "$VOL_ROUTEUR":/home/"$USERNAME" \
     "$IMAGE_ROUTEUR"
 
-# Ajout de la carte connectée au réseau de la section (réseau bridge par défaut de Docker)
+# Ajout de la carte connecté au réseau de la section (réseau bridge par défaut de Docker)
 docker network connect bridge "$ROUTEUR"
 
 # Activation du NAT sur cette carte
 docker exec --privileged "$ROUTEUR" iptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE
 
+# Ajout des règles Iptables pour rediriger vers les conteneurs
+docker exec --privileged "$ROUTEUR" iptables -t nat -A PREROUTING -p tcp --dport "$SSH_PORT_SERVEUR" -j DNAT --to-destination "$IP_SERVEUR":22
+docker exec --privileged "$ROUTEUR" iptables -t nat -A PREROUTING -p tcp --dport "$SSH_PORT_CLIENT" -j DNAT --to-destination "$IP_CLIENT":22
+docker exec --privileged "$ROUTEUR" iptables -t nat -A PREROUTING -p tcp --dport "$SSH_PORT_KALI" -j DNAT --to-destination "$IP_KALI":22
+docker exec --privileged "$ROUTEUR" iptables -t nat -A PREROUTING -p tcp --dport "$RDP_PORT_CLIENT" -j DNAT --to-destination "$IP_CLIENT":3389
+docker exec --privileged "$ROUTEUR" iptables -t nat -A PREROUTING -p tcp --dport "$RDP_PORT_KALI" -j DNAT --to-destination "$IP_KALI":3389
+
 echo -e "Lancement et configuration du serveur"
 # Lancement du serveur
 docker run --name "$SERVEUR" \
-    --pull always \
     --network "$NOM_RESEAU" \
     --ip "$IP_SERVEUR" \
     --hostname "$HOST_SERVEUR" \
     --dns "$IP_SERVEUR" \
     --dns-search "$DOMAINE" \
-    -p "$SSH_PORT_SERVEUR":22 \
     -t \
     -d \
     --tmpfs /tmp \
@@ -117,14 +130,11 @@ MODIF_PASSERELLE "$SERVEUR"
 echo -e "Lancement et configuration du client"
 # Lancement du client
 docker run --name "$CLIENT" \
-    --pull always \
     --network "$NOM_RESEAU" \
     --ip "$IP_CLIENT" \
     --hostname "$HOST_CLIENT" \
     --dns "$IP_SERVEUR" \
     --dns-search "$DOMAINE" \
-    -p "$RDP_PORT_CLIENT":3389 \
-    -p "$SSH_PORT_CLIENT":22 \
     -t \
     -d \
     --tmpfs /tmp \
@@ -142,14 +152,11 @@ MODIF_PASSERELLE "$CLIENT"
 echo -e "Lancement et configuration de Kali"
 # Lancement de Kali
 docker run --name "$KALI" \
-    --pull always \
     --network "$NOM_RESEAU" \
     --ip "$IP_KALI" \
     --hostname "$HOST_KALI" \
     --dns "$IP_SERVEUR" \
     --dns-search "$DOMAINE" \
-    -p "$RDP_PORT_KALI":3389 \
-    -p "$SSH_PORT_KALI":22 \
     -t \
     -d \
     --tmpfs /tmp \
