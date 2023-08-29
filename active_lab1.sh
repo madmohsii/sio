@@ -7,7 +7,7 @@
 # Recopier éventuellement ici les variables pour ne donner aux étudiants que ce script
 source ./variables
 
-# Création du réseau
+# Création du réseau interne du LAB
 echo -e "\nCréation du réseau $IP_RESEAU pour le lab"
 if (docker network ls | grep bridge_lab1 >/dev/null); then
     NET_ACTUEL=$(docker network inspect --format='{{range .IPAM.Config}}{{.Subnet}}{{end}}' bridge_lab1)
@@ -47,8 +47,10 @@ MODIF_PASSERELLE() {
 # Voir discussion ici : https://serverfault.com/questions/1053187/systemd-fails-to-run-in-a-docker-container-when-using-cgroupv2-cgroupns-priva
 
 # Supprimer --security-opt seccomp=unconfined \ si le noyau ne le supporte pas
-# --privileged pour ROUTEUR et KALI sinon pas do commande sysctl possible à l'intérieur du conteneur
+# --privileged pour ROUTEUR et KALI sinon pas de commande sysctl possible à l'intérieur du conteneur
 # --cap-add NET_ADMIN permet la commande iptables au sein du conteneur mais pas sysctl...
+
+# --pull always récupère une nouvelle image si elle existe avant de lancer le conteneur
 
 echo -e "\nCréation des conteneurs (après avoir supprimé les éventuels conteneurs existants)."
 # Suppression éventuelle des conteneurs (sans suppression des volumes)
@@ -62,6 +64,7 @@ done
 echo -e "Lancement et configuration du routeur"
 # Lancement du routeur
 docker run --name "$ROUTEUR" \
+    --pull always \
     --network "$NOM_RESEAU" \
     --ip "$IP_ROUTEUR" \
     --hostname "$HOST_ROUTEUR" \
@@ -80,12 +83,16 @@ docker run --name "$ROUTEUR" \
     -v "$VOL_ROUTEUR":/home/"$USERNAME" \
     "$IMAGE_ROUTEUR"
 
-# Activation du NAT
-docker exec --privileged "$ROUTEUR" iptables -t nat -A POSTROUTING -s "$IP_RESEAU" -o eth0 -j MASQUERADE
+# Ajout de la carte connectée au réseau de la section (réseau bridge par défaut de Docker)
+docker network connect bridge "$ROUTEUR"
+
+# Activation du NAT sur cette carte
+docker exec --privileged "$ROUTEUR" iptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE
 
 echo -e "Lancement et configuration du serveur"
 # Lancement du serveur
 docker run --name "$SERVEUR" \
+    --pull always \
     --network "$NOM_RESEAU" \
     --ip "$IP_SERVEUR" \
     --hostname "$HOST_SERVEUR" \
@@ -109,6 +116,7 @@ MODIF_PASSERELLE "$SERVEUR"
 echo -e "Lancement et configuration du client"
 # Lancement du client
 docker run --name "$CLIENT" \
+    --pull always \
     --network "$NOM_RESEAU" \
     --ip "$IP_CLIENT" \
     --hostname "$HOST_CLIENT" \
@@ -133,6 +141,7 @@ MODIF_PASSERELLE "$CLIENT"
 echo -e "Lancement et configuration de Kali"
 # Lancement de Kali
 docker run --name "$KALI" \
+    --pull always \
     --network "$NOM_RESEAU" \
     --ip "$IP_KALI" \
     --hostname "$HOST_KALI" \

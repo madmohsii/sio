@@ -15,6 +15,7 @@ RUN apt update -q --fix-missing \
     && apt upgrade -y \
     && DEBIAN_FRONTEND=noninteractive apt -y install --no-install-recommends \
     iptables \
+    conntrack \
     && apt clean \
     && rm -rf /var/lib/apt/lists/* \
     /var/log/alternatives.log \
