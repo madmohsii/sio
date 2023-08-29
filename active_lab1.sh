@@ -5,6 +5,7 @@
 # Import du fichier des variables
 # Du moment que les images sont disponibles sur le docker hub
 # Recopier éventuellement ici les variables pour ne donner aux étudiants que ce script
+wget https://forge.aeif.fr/btssio-labos-kali/lab1/-/raw/main/variables
 source ./variables
 
 # Création du réseau interne du LAB
