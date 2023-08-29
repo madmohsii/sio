@@ -4,8 +4,8 @@
 
 Sur un poste où Docker est installé :
 
-1. Récupérer les scripts via git clone.
-1. Se déplacer dans le dossier créé.
+1. Récupérer les scripts via git clone (git clone https://forge.aeif.fr/btssio-labos-kali/lab1.git).
+1. Se déplacer dans le dossier "lab1" créé.
 1. Lancer Le script "active_lab1.sh" (bash active_lab1.sh) qui va créer un laboratoire opérationnel (en créant le réseau et les 4 conteneurs pré-configurés) correspondant au schéma suivant :
 
 ![Schéma réseau du laboratoire 1 - Kali-Linux](schemaReseauLab1_docker.drawio.png "Schéma réseau du laboratoire 1 - Kali-Linux").
