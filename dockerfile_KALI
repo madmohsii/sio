@@ -102,6 +102,7 @@ RUN if [ -e /etc/xdg/xfce4/panel/default.xml ] ; \
 # On est toujours obligé de faire un dpkg-reconfigure wireshark-common
 RUN sudo groupadd -r wireshark
 RUN usermod -a -G wireshark ${USERNAME}
+RUN newgrp wireshark
 
 STOPSIGNAL SIGRTMIN+3
 
