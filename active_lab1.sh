@@ -2,11 +2,14 @@
 # shellcheck disable=SC2181,SC2001
 # shellcheck source=/dev/null
 
-# Import du fichier des variables
 # Du moment que les images sont disponibles sur le docker hub
 # Recopier éventuellement ici les variables pour ne donner aux étudiants que ce script
+# Ou si vous n'avez pas modifié les variables, décommenter les deux lignes suivantes :
+# cp variables variables.old
+# wget https://forge.aeif.fr/btssio-labos-kali/lab1/-/raw/main/variables --output-document variables
 
-source ./variables
+# Import du fichier des variables
+source variables
 
 # Création du réseau interne du LAB
 echo -e "\nCréation du réseau $IP_RESEAU pour le lab"
@@ -47,9 +50,10 @@ MODIF_PASSERELLE() {
 # Pour le montage de /sys/fs/cgroup, ça ne fonctionne pas en ro...
 # Voir discussion ici : https://serverfault.com/questions/1053187/systemd-fails-to-run-in-a-docker-container-when-using-cgroupv2-cgroupns-priva
 
-# Supprimer --security-opt seccomp=unconfined \ si le noyau ne le supporte pas
-# --privileged pour ROUTEUR et KALI sinon pas de commande sysctl possible à l'intérieur du conteneur
-# --cap-add NET_ADMIN permet la commande iptables au sein du conteneur mais pas sysctl...
+# --privileged pour les conteneurs (obligatoire pour ROUTEUR et KALI pour la commande sysctl)
+# --cap-add NET_ADMIN permet la commande iptables et ip neigh flush (mais pas sysctl)
+# Elle devrait normalement suffire pour SERVEUR et CLIENT mais on est dans le cadre d'un labo
+# On sera peut-êre amené à passer d'autres commandes sur ces machines...
 
 # --pull always récupère une nouvelle image si elle existe avant de lancer le conteneur
 
@@ -119,7 +123,7 @@ docker run --name "$SERVEUR" \
     --tmpfs /run \
     --tmpfs /run/lock \
     --cgroupns host \
-    --security-opt seccomp=unconfined \
+    --privileged \
     -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
     -v "$VOL_SERVEUR":/home/"$USERNAME" \
     "$IMAGE_SERVEUR"
@@ -141,7 +145,7 @@ docker run --name "$CLIENT" \
     --tmpfs /run \
     --tmpfs /run/lock \
     --cgroupns host \
-    --security-opt seccomp=unconfined \
+    --privileged \
     -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
     -v "$VOL_CLIENT":/home/"$USERNAME" \
     "$IMAGE_CLIENT"
