@@ -2,8 +2,13 @@
 # shellcheck disable=SC2181,SC2001
 # shellcheck source=/dev/null
 
+# Recopier éventuellement ici les variables pour ne donner aux étudiants que ce script
+# Ou si vous n'avez pas modifié les variables, décommenter les deux lignes suivantes :
+# cp variables variables.old
+# wget https://forge.aeif.fr/btssio-labos-kali/lab1/-/raw/main/variables --output-document variables
+
 # Import du fichier des variables d'environnement
-source ./variables
+source variables
 
 # suppression des conteneurs
 echo -e "\nSuppression des conteneurs"
