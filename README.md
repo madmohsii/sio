@@ -7,8 +7,8 @@ Sur un poste où Docker est installé :
 1. Récupérer les scripts via git clone (git clone <https://forge.aeif.fr/btssio-labos-kali/lab1.git>).
 1. Se déplacer dans le dossier "lab1" créé.
 1. Usage du script "gestion_lab1.sh" :
-2. 
-```
+
+``` bash
     Usage: bash gestion_lab1.sh -c|-l|d|s|r|i <type de l'image>|h
     -c Crée le laboratoire. Ce dernier sera lancé à l'issue de la création.
     -l Lance un laboratoire préalablement stoppé.
