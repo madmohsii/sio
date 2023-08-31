@@ -84,12 +84,12 @@ SHOW_USAGE() {
     echo -e "\nCe script permet de créer, lancer, redémarrer, stopper, supprimer le laboratoire mais aussi de personnaliser les images."
     echo -e "Une option -c ou -l ou -d ou -s ou -r ou -i <type de l'image> ou -h doit obligatoirement être passée en ligne de commande (voir Usage ci-après)."
     echo -e "Usage: bash $0 -c|-l|d|s|r|i <type de l'image>|h"
-    echo -e "\t-c\t\tcrée le laboratoire. Ce dernier sera lancé à l'issue de la création. "
+    echo -e "\t-c\t\tCrée le laboratoire. Ce dernier sera lancé à l'issue de la création. "
     echo -e "\t-l\t\tLance un laboratoire préalablement stoppé."
     echo -e "\t-d\t\tSupprime le laboratoire. Les volumes sont également supprimés."
     echo -e "\t-s\t\tStoppe le laboratoire."
     echo -e "\t-r\t\tRedémarre un laboratoire actif."
-    echo -e "\t-i\t\tType de l'image en majuscule  -i ROUTEUR|SERVEUR|CLIENT|KALI|BASE."
+    echo -e "\t-i\t\tCrée une image personnalisée (mettre le type de l'image en majuscule) -i ROUTEUR|SERVEUR|CLIENT|KALI|BASE."
     echo -e "\t-h\t\tDétail des options."
 }
 
