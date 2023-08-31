@@ -31,10 +31,10 @@ SSH_PORT_ROUTEUR=42222
 KALI_PKG="core"
 
 # Configuration du réseau
-NOM_RESEAU="bridge_lab1"
+NOM_RESEAU_INTERNE="bridge_interne_lab"
 # La configuration du DNS doit être modifiée si les valeurs ci-dessous sont modifiées
-# Modifier la variable IP_RESEAU implique la suppression de tous les conteneurs et volumes associés
-IP_RESEAU="192.168.56.0/24"
+# Modifier la variable IP_RESEAU_INTERNE implique la suppression de tous les conteneurs et volumes associés
+IP_RESEAU_INTERNE="192.168.56.0/24"
 IP_SERVEUR="192.168.56.10"
 IP_CLIENT="192.168.56.11"
 IP_KALI="192.168.56.12"
@@ -166,7 +166,7 @@ while getopts "cldsri:h" option; do
     esac
 done
 
-if [[ -z "$launch" && -z "$delete" && -z "$stop" && -z "$restart" && -z "$type_image_o" ]]; then
+if [[ -z "$create" && -z "$launch" && -z "$delete" && -z "$stop" && -z "$restart" && -z "$type_image_o" ]]; then
     echo -e "\nUne option doit obligatoirement être passée au script."
     SHOW_USAGE
     exit 1
@@ -184,27 +184,27 @@ if [ -n "$create" ]; then
     echo -e "\nCréation du laboratoire\n"
 
     # Création du réseau interne du LAB
-    echo -e "\nCréation du réseau $IP_RESEAU pour le lab"
-    if (docker network ls | grep bridge_lab1 >/dev/null); then
-        NET_ACTUEL=$(docker network inspect --format='{{range .IPAM.Config}}{{.Subnet}}{{end}}' bridge_lab1)
-        if [ "$IP_RESEAU" ] && [ "$NET_ACTUEL" != "$IP_RESEAU" ]; then
+    echo -e "\nCréation du réseau $IP_RESEAU_INTERNE pour le lab"
+    if (docker network ls | grep $NOM_RESEAU_INTERNE >/dev/null); then
+        NET_ACTUEL=$(docker network inspect --format='{{range .IPAM.Config}}{{.Subnet}}{{end}}' $NOM_RESEAU_INTERNE)
+        if [ "$IP_RESEAU_INTERNE" ] && [ "$NET_ACTUEL" != "$IP_RESEAU_INTERNE" ]; then
             # shellcheck disable=SC2046
             docker rm -f $(docker ps -aq)
             # shellcheck disable=SC2046
             docker volume rm $(docker volume ls -qf dangling=true)
-            docker network rm bridge_lab1
+            docker network rm $NOM_RESEAU_INTERNE
             docker network create \
                 --driver=bridge \
-                --subnet="$IP_RESEAU" \
-                "$NOM_RESEAU"
+                --subnet="$IP_RESEAU_INTERNE" \
+                "$NOM_RESEAU_INTERNE"
         else
-            echo -e "Réseau $IP_RESEAU pour le lab... Déjà créé."
+            echo -e "Réseau $IP_RESEAU_INTERNE pour le lab... Déjà créé."
         fi
     else
         docker network create \
             --driver=bridge \
-            --subnet="$IP_RESEAU" \
-            "$NOM_RESEAU"
+            --subnet="$IP_RESEAU_INTERNE" \
+            "$NOM_RESEAU_INTERNE"
     fi
 
     # Fonction qui modifie la passerelle par défaut
@@ -241,11 +241,12 @@ if [ -n "$create" ]; then
         fi
     done
 
-    echo -e "Lancement et configuration du routeur"
+    echo -e "\nLancement et configuration du routeur"
     # Lancement du routeur
-    docker run --name "$ROUTEUR" \
+    # Le routeur est connecté au réseau de l'infrastructure du BTS SIO - eth0 (réseau bridge par défaut de Docker)
+    if (docker run --name "$ROUTEUR" \
         --pull always \
-        --network "$NOM_RESEAU" \
+        --network "bridge" \
         --ip "$IP_ROUTEUR" \
         --hostname "$HOST_ROUTEUR" \
         --dns "$IP_SERVEUR" \
@@ -266,13 +267,19 @@ if [ -n "$create" ]; then
         --sysctl net.ipv4.ip_forward=1 \
         -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
         -v "$VOL_ROUTEUR":/home/"$USERNAME" \
-        "$IMAGE_ROUTEUR"
+        "$IMAGE_ROUTEUR"); then
+        echo -e "conteneur $ROUTEUR... Créé"
 
-    # Ajout de la carte connecté au réseau de la section (réseau bridge par défaut de Docker)
-    docker network connect bridge "$ROUTEUR"
+    else
+        echo -e "conteneur $ROUTEUR... Echec"
+        exit 1
+    fi
 
-    # Activation du NAT sur cette carte
-    docker exec --privileged "$ROUTEUR" iptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE
+    # Ajout de la carte connectée au réseau interne - eth1
+    docker network connect $NOM_RESEAU_INTERNE "$ROUTEUR"
+
+    # Activation du NAT sur le réseau connecté à l'infrastructure du BTS SIO
+    docker exec --privileged "$ROUTEUR" iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
 
     # Ajout des règles Iptables pour rediriger vers les conteneurs
     docker exec --privileged "$ROUTEUR" iptables -t nat -A PREROUTING -p tcp --dport "$SSH_PORT_SERVEUR" -j DNAT --to-destination "$IP_SERVEUR":22
@@ -281,10 +288,10 @@ if [ -n "$create" ]; then
     docker exec --privileged "$ROUTEUR" iptables -t nat -A PREROUTING -p tcp --dport "$RDP_PORT_CLIENT" -j DNAT --to-destination "$IP_CLIENT":3389
     docker exec --privileged "$ROUTEUR" iptables -t nat -A PREROUTING -p tcp --dport "$RDP_PORT_KALI" -j DNAT --to-destination "$IP_KALI":3389
 
-    echo -e "Lancement et configuration du serveur"
+    echo -e "\Lancement et configuration du serveur"
     # Lancement du serveur
-    docker run --name "$SERVEUR" \
-        --network "$NOM_RESEAU" \
+    if (docker run --name "$SERVEUR" \
+        --network "$NOM_RESEAU_INTERNE" \
         --ip "$IP_SERVEUR" \
         --hostname "$HOST_SERVEUR" \
         --dns "$IP_SERVEUR" \
@@ -298,15 +305,21 @@ if [ -n "$create" ]; then
         --privileged \
         -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
         -v "$VOL_SERVEUR":/home/"$USERNAME" \
-        "$IMAGE_SERVEUR"
+        "$IMAGE_SERVEUR"); then
+        echo -e "conteneur $SERVEUR... Créé"
+
+    else
+        echo -e "conteneur $SERVEUR... Echec"
+        exit 1
+    fi
 
     # Modification de la passerelle par défaut
     MODIF_PASSERELLE "$SERVEUR"
 
-    echo -e "Lancement et configuration du client"
+    echo -e "\Lancement et configuration du client"
     # Lancement du client
-    docker run --name "$CLIENT" \
-        --network "$NOM_RESEAU" \
+    if (docker run --name "$CLIENT" \
+        --network "$NOM_RESEAU_INTERNE" \
         --ip "$IP_CLIENT" \
         --hostname "$HOST_CLIENT" \
         --dns "$IP_SERVEUR" \
@@ -320,15 +333,21 @@ if [ -n "$create" ]; then
         --privileged \
         -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
         -v "$VOL_CLIENT":/home/"$USERNAME" \
-        "$IMAGE_CLIENT"
+        "$IMAGE_CLIENT"); then
+        echo -e "conteneur $CLIENT... Créé"
+
+    else
+        echo -e "conteneur $CLIENT... Echec"
+        exit 1
+    fi
 
     # Modification de la passerelle par défaut
     MODIF_PASSERELLE "$CLIENT"
 
-    echo -e "Lancement et configuration de Kali"
+    echo -e "\nLancement et configuration de Kali"
     # Lancement de Kali
-    docker run --name "$KALI" \
-        --network "$NOM_RESEAU" \
+    if (docker run --name "$KALI" \
+        --network "$NOM_RESEAU_INTERNE" \
         --ip "$IP_KALI" \
         --hostname "$HOST_KALI" \
         --dns "$IP_SERVEUR" \
@@ -342,7 +361,13 @@ if [ -n "$create" ]; then
         --privileged \
         -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
         -v "$VOL_KALI":/home/"$USERNAME" \
-        "$IMAGE_KALI"
+        "$IMAGE_KALI"); then
+        echo -e "conteneur $KALI... Créé"
+
+    else
+        echo -e "conteneur $KALI... Echec"
+        exit 1
+    fi
 
     # Modification de la passerelle par défaut
     MODIF_PASSERELLE "$KALI"
@@ -380,11 +405,11 @@ if [ -n "$delete" ]; then
     done
 
     # Suppression du réseau
-    echo -e "\nSuppression du réseau $IP_RESEAU"
-    if (docker network ls | grep bridge_lab1 >/dev/null); then
-        docker network rm bridge_lab1
+    echo -e "\nSuppression du réseau $IP_RESEAU_INTERNE"
+    if (docker network ls | grep $NOM_RESEAU_INTERNE >/dev/null); then
+        docker network rm $NOM_RESEAU_INTERNE
     else
-        echo -e "Réseau $IP_RESEAU... Déjà supprimé."
+        echo -e "Réseau $IP_RESEAU_INTERNE... Déjà supprimé."
     fi
 
     # Suppresion des volumes
