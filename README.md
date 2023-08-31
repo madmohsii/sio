@@ -1,16 +1,31 @@
 # Principes
 
-## Activation du lab
+## Gestion du lab
 
 Sur un poste où Docker est installé :
 
-1. Récupérer les scripts via git clone (git clone https://forge.aeif.fr/btssio-labos-kali/lab1.git).
+1. Récupérer les scripts via git clone (git clone <https://forge.aeif.fr/btssio-labos-kali/lab1.git>).
 1. Se déplacer dans le dossier "lab1" créé.
-1. Lancer Le script "active_lab1.sh" (bash active_lab1.sh) qui va créer un laboratoire opérationnel (en créant le réseau et les 4 conteneurs pré-configurés) correspondant au schéma suivant :
+1. Usage du script "gestion_lab1.sh" :
+2. 
+```
+    Usage: bash gestion_lab1.sh -c|-l|d|s|r|i <type de l'image>|h
+    -c Crée le laboratoire. Ce dernier sera lancé à l'issue de la création.
+    -l Lance un laboratoire préalablement stoppé.
+    -d Supprime le laboratoire. Les volumes sont également supprimés.
+    -s Stoppe le laboratoire.
+    -r Redémarre un laboratoire actif.
+    -i Crée une image personnalisée (mettre le type de l'image en majuscule) -i ROUTEUR|SERVEUR|CLIENT|KALI|BASE.
+    -h Détail des options.
+```
+
+> Il suffit de fournir le fichier gestion_lab1.sh aux étudiants.
+
+Le script "gestion_lab1.sh" permet de créer un laboratoire opérationnel correspondant au schéma suivant :
 
 ![Schéma réseau du laboratoire 1 - Kali-Linux](schemaReseauLab1_docker.drawio.png "Schéma réseau du laboratoire 1 - Kali-Linux").
 
-> Il est possible de personnaliser le laboratoire en modifiant les variables (fichier "variables").
+> Il est possible de personnaliser le laboratoire en modifiant les variables.
 
 ## Accessibilité des conteneurs
 
@@ -33,10 +48,9 @@ Il est nécessaire de configurer un client de bureau à distance.
 À partir d'une machine externe les conteneurs sont accessibles via l'adresse IP de l'hôte sur le port défini dans le fichier variables, par exemple pour l'attaquant Kali : 33389.
 
 > Pour le client REMMINA (sur Linux), une configuration supplémentaire doit être faite :
-> 
+>
 > - ouvrir les paramètres de connexion pour le profil de connexion ;
 > - accéder à "Avancé" et sélectionner "Cache des glyphes" et "Assouplir les vérifications des ordres".
-
 
 ## Génération des images
 
@@ -45,6 +59,7 @@ Il y a 4 images opérationnelles plus une image Debian 12 de base.
 Les images existent déjà sur le Docker Hub sous l'id docker "aporaf" mais vous pouvez créer vos propres images avec le script create_image.sh, après avoir éventuellement modifié le fichier "variables" et les Dockerfile respectifs.
 
 Elles sont très légères :
+
 ```
 REPOSITORY               TAG       SIZE
 aporaf/routeurdebian12   lab1      425MB
@@ -54,14 +69,10 @@ aporaf/kalirolling       lab1      2.23GB
 aporaf/basedebian12      1.0       421MB
 ```
 
+Pour créer une image personnalisée (après avoir modifié le variables nécessaires)
 
-Usage du script create_image_lab1.sh :
+`gestion_lab1.sh -i ROUTEUR|SERVEUR|CLIENT|KALI|BASE`
 
-`create_images_lab1.sh -i ROUTEUR|SERVEUR|CLIENT|KALI|BASE`
-
-Prochainement :
-
-create_image_lab1.sh -a permettra de créer toutes les images en une seule fois.
 
 ### Image BASE (fichier dockerfile_BASE)
 
@@ -72,13 +83,11 @@ create_image_lab1.sh -a permettra de créer toutes les images en une seule fois.
 - Lance SSH.
 - Crée le compte "non root" utilisé dans le lab (par défaut etusio).
 
-
 ### Image CLIENT (fichier dockerfile_CLIENT)
 
 - Basée sur l'image de base.
 - Ajoute l'installation de XFCE4 et de XRDP.
 - Ajoute également l'installation de Wireshark et de Firefox.
-
 
 ### Image KALI (fichier dockerfile_KALI)
 
@@ -91,13 +100,11 @@ create_image_lab1.sh -a permettra de créer toutes les images en une seule fois.
 - Lance SSH.
 - Crée le compte "non root" utilisé dans le lab (par défaut "etusio").
 
-
 ### Image ROUTEUR (fichier dockerfile_ROUTEUR)
 
 - Basée sur l'image de base.
 - Ajoute l'installation d'iptables et de conntrack (non indispensable mais permet un éventuel débogage).
 - La configuration est réalisée lors de la création des conteneurs.
-
 
 ### Image SERVEUR (fichier dockerfile_SERVEUR)
 
@@ -105,7 +112,6 @@ create_image_lab1.sh -a permettra de créer toutes les images en une seule fois.
 - Ajoute l'installation de bind9
 - Configure le serveur DNS
 - Les éléments de configuration sont basés sur l'adresse IP proposée dans le lab : 192.168.56.0/24
-
 
 ## Génération des conteneurs
 
