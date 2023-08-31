@@ -13,7 +13,6 @@ FROM kalilinux/kali-rolling
 ARG USERNAME
 ARG USERPASS
 ARG KALI_PKG
-ENV DESKTOP_KALI_PKG=kali-desktop-${KALI_PKG}
 ENV META_KALI_PKG=kali-linux-${KALI_PKG}
 ENV container docker
 ENV LANG=fr_FR.UTF-8 
@@ -43,9 +42,9 @@ RUN apt update -q --fix-missing \
     xrdp \
     systemd \
     systemd-sysv \
-    ${DESKTOP_KALI_PKG} \
-    ${META_KALI_PKG} \
     kali-desktop-xfce \
+    kali-desktop-core \
+    ${META_KALI_PKG} \
     ettercap-graphical \
     wireshark \
     nmap \
