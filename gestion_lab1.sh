@@ -288,9 +288,10 @@ if [ -n "$create" ]; then
     docker exec --privileged "$ROUTEUR" iptables -t nat -A PREROUTING -p tcp --dport "$RDP_PORT_CLIENT" -j DNAT --to-destination "$IP_CLIENT":3389
     docker exec --privileged "$ROUTEUR" iptables -t nat -A PREROUTING -p tcp --dport "$RDP_PORT_KALI" -j DNAT --to-destination "$IP_KALI":3389
 
-    echo -e "\Lancement et configuration du serveur"
+    echo -e "\nLancement et configuration du serveur"
     # Lancement du serveur
     if (docker run --name "$SERVEUR" \
+        --pull always \
         --network "$NOM_RESEAU_INTERNE" \
         --ip "$IP_SERVEUR" \
         --hostname "$HOST_SERVEUR" \
@@ -316,9 +317,10 @@ if [ -n "$create" ]; then
     # Modification de la passerelle par défaut
     MODIF_PASSERELLE "$SERVEUR"
 
-    echo -e "\Lancement et configuration du client"
+    echo -e "\nLancement et configuration du client"
     # Lancement du client
     if (docker run --name "$CLIENT" \
+        --pull always \
         --network "$NOM_RESEAU_INTERNE" \
         --ip "$IP_CLIENT" \
         --hostname "$HOST_CLIENT" \
@@ -347,6 +349,7 @@ if [ -n "$create" ]; then
     echo -e "\nLancement et configuration de Kali"
     # Lancement de Kali
     if (docker run --name "$KALI" \
+        --pull always \
         --network "$NOM_RESEAU_INTERNE" \
         --ip "$IP_KALI" \
         --hostname "$HOST_KALI" \
