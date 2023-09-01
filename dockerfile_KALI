@@ -4,10 +4,10 @@
 #
 # Ce Dockerfile construit une image Docker de Kali Linux
 # avec l'environnement de bureau XFCE accessible via RDP
-# avec un accès SSH
-# avec systemd
+# avec les méta-paquets "core" par défaut (variable KALI_PKG)
+# avec un accès SSH et systemd
 # avec la création d'un utilisateur non root
-# Installation de ssh-mitm
+# avec l'installation de ssh-mitm
 
 FROM kalilinux/kali-rolling
 
@@ -34,6 +34,7 @@ RUN apt update -q --fix-missing \
     net-tools \
     dnsutils \
     iptables \
+    conntrack \
     dbus-x11 \
     xinit \
     openssh-server \
@@ -54,9 +55,7 @@ RUN apt update -q --fix-missing \
     build-essential \
     zlib1g-dev \
     psmisc \
-    gpg \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt clean
+    gpg
 
 # Configuration de la Timezone Europe/Paris et des locales 
 RUN rm /etc/localtime \
@@ -101,14 +100,14 @@ RUN adduser xrdp ssl-cert \
     && chmod +x /home/${USERNAME}/.xsession
 
 # Désactivation du paramètre Xfce Power Management qui contrôle la gestion de l'alimentation de l'affichage
-RUN rm /etc/xdg/autostart/xfce4-power-manager.desktop
-RUN if [ -e /etc/xdg/xfce4/panel/default.xml ] ; \
+RUN rm /etc/xdg/autostart/xfce4-power-manager.desktop \
+    && if [ -e /etc/xdg/xfce4/panel/default.xml ] ; \
     then \
     sed -i s/power/fail/ /etc/xdg/xfce4/panel/default.xml ; \
     fi
 
 # Installation de ssh-mitm
-# Pre-requis dû à une dépendance obsolète
+# Pré-requis dû à une dépendance obsolète
 RUN wget --no-check-certificate https://snapshot.debian.org/archive/debian-security/20220317T093342Z/pool/updates/main/o/openssl1.0/libssl1.0-dev_1.0.2u-1~deb9u7_amd64.deb \
     && wget --no-check-certificate https://snapshot.debian.org/archive/debian-security/20220317T093342Z/pool/updates/main/o/openssl1.0/libssl1.0.2_1.0.2u-1~deb9u7_amd64.deb \
     && dpkg -i libssl1.0.2_1.0.2u-1~deb9u7_amd64.deb \
@@ -121,11 +120,20 @@ RUN git -c http.sslVerify=false clone https://github.com/ktux/ssh-mitm \
     && cd /home/${USERNAME}/ssh-mitm \
     && bash install.sh
 
-# Autorisation pour wireshark (mais ne fonctionne pas)
+# Clean APT
+RUN apt clean \
+    && rm -rf /var/lib/apt/lists/* \
+    /var/log/alternatives.log \
+    /var/log/apt/history.log \
+    /var/log/apt/term.log \
+    /var/log/dpkg.log \
+    /tmp/* /var/tmp/*
+
+# Autorisation de l'utilisateur pour l'utilisation de capture dans wireshark (mais ne fonctionne pas)
 # On est toujours obligé de faire un dpkg-reconfigure wireshark-common
-RUN sudo groupadd -r wireshark
-RUN usermod -a -G wireshark ${USERNAME}
-RUN newgrp wireshark
+RUN sudo groupadd -r wireshark \
+    && usermod -a -G wireshark ${USERNAME} \
+    && newgrp wireshark
 
 STOPSIGNAL SIGRTMIN+3
 
