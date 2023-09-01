@@ -244,10 +244,10 @@ if [ -n "$create" ]; then
     echo -e "\nLancement et configuration du routeur"
     # Lancement du routeur
     # Le routeur est connecté au réseau de l'infrastructure du BTS SIO - eth0 (réseau bridge par défaut de Docker)
+    # Adresse IP en DHCP
     if (docker run --name "$ROUTEUR" \
         --pull always \
         --network "bridge" \
-        --ip "$IP_ROUTEUR" \
         --hostname "$HOST_ROUTEUR" \
         --dns "$IP_SERVEUR" \
         --dns-search "$DOMAINE" \
@@ -276,7 +276,7 @@ if [ -n "$create" ]; then
     fi
 
     # Ajout de la carte connectée au réseau interne - eth1
-    docker network connect $NOM_RESEAU_INTERNE "$ROUTEUR"
+    docker network connect $NOM_RESEAU_INTERNE --ip "$IP_ROUTEUR" "$ROUTEUR"
 
     # Activation du NAT sur le réseau connecté à l'infrastructure du BTS SIO
     docker exec --privileged "$ROUTEUR" iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
