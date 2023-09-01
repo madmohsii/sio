@@ -6,7 +6,8 @@
 # avec l'environnement de bureau XFCE accessible via RDP
 # avec un accès SSH
 # avec systemd
-# avec création d'un utilisateur non root
+# avec la création d'un utilisateur non root
+# Installation de ssh-mitm
 
 FROM kalilinux/kali-rolling
 
@@ -48,6 +49,12 @@ RUN apt update -q --fix-missing \
     ettercap-graphical \
     wireshark \
     nmap \
+    apparmor \
+    autoconf \
+    build-essential \
+    zlib1g-dev \
+    psmisc \
+    gpg \
     && rm -rf /var/lib/apt/lists/* \
     && apt clean
 
@@ -77,6 +84,9 @@ RUN systemctl enable ssh.service
 # Activation de RDP
 RUN systemctl enable xrdp.service
 
+# Activation de apparmor (nécessaire pour ssh-mitm)
+RUN systemctl enable apparmor
+
 # Déclaration des ports exposés
 EXPOSE 22/tcp
 EXPOSE 3389/tcp
@@ -96,6 +106,21 @@ RUN if [ -e /etc/xdg/xfce4/panel/default.xml ] ; \
     then \
     sed -i s/power/fail/ /etc/xdg/xfce4/panel/default.xml ; \
     fi
+
+# Installation de ssh-mitm
+# Pre-requis dû à une dépendance obsolète
+RUN wget --no-check-certificate https://snapshot.debian.org/archive/debian-security/20220317T093342Z/pool/updates/main/o/openssl1.0/libssl1.0-dev_1.0.2u-1~deb9u7_amd64.deb \
+    && wget --no-check-certificate https://snapshot.debian.org/archive/debian-security/20220317T093342Z/pool/updates/main/o/openssl1.0/libssl1.0.2_1.0.2u-1~deb9u7_amd64.deb \
+    && dpkg -i libssl1.0.2_1.0.2u-1~deb9u7_amd64.deb \
+    && dpkg -i libssl1.0-dev_1.0.2u-1~deb9u7_amd64.deb \
+    && rm libssl1.0.2_1.0.2u-1~deb9u7_amd64.deb libssl1.0-dev_1.0.2u-1~deb9u7_amd64.deb \
+    && DEBIAN_FRONTEND=noninteractive apt install -y autoconf build-essential zlib1g-dev libssl1.0-dev psmisc
+# Installation
+WORKDIR /home/${USERNAME}
+RUN git -c http.sslVerify=false clone https://github.com/ktux/ssh-mitm \
+    && chown -R ${USERNAME}:${USERNAME} /home/${USERNAME}/ssh-mitm \
+    && cd /home/${USERNAME}/ssh-mitm \
+    && bash install.sh
 
 # Autorisation pour wireshark (mais ne fonctionne pas)
 # On est toujours obligé de faire un dpkg-reconfigure wireshark-common
