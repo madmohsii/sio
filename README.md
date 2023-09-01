@@ -23,7 +23,7 @@ Sur un poste où Docker est installé :
 
 Le script "gestion_lab1.sh" permet de créer un laboratoire opérationnel correspondant au schéma suivant :
 
-![Schéma réseau du laboratoire 1 - Kali-Linux](schemaReseauLab1_docker.drawio.png "Schéma réseau du laboratoire 1 - Kali-Linux").
+![Schéma réseau du laboratoire 1 - Kali-Linux](schema_reseau_lab1_docker.drawio.png "Schéma réseau du laboratoire 1 - Kali-Linux").
 
 > Il est possible de personnaliser le laboratoire en modifiant les variables.
 
@@ -35,7 +35,7 @@ Tous les conteneurs sont accessibles via ssh à partir de l'hôte et de l'extér
 
 À partir de l'hôte les conteneurs sont directement accessibles via leur adresse IP interne sur le port 22, par exemple pour l'attaquant Kali : ssh etusio@192.168.56.12
 
-À partir d'une machine externe les conteneurs sont accessibles via l'adresse IP de l'hôte sur le port défini dans le fichier variables, par exemple pour l'attaquant Kali : ssh etusio@192.168.60.111 -p 32222
+À partir d'une machine externe les conteneurs sont accessibles via l'adresse IP de l'hôte sur le port défini dans le fichier variables, par exemple pour l'attaquant Kali : ssh etusio@192.168.60.111 -p 32222 (avec 192.168.60.111 l'adresse IP du serveur Docker).
 
 ### Interface graphique via RDP
 
@@ -56,20 +56,20 @@ Il est nécessaire de configurer un client de bureau à distance.
 
 Il y a 4 images opérationnelles plus une image Debian 12 de base.
 
-Les images existent déjà sur le Docker Hub sous l'id docker "aporaf" mais vous pouvez créer vos propres images avec le script create_image.sh, après avoir éventuellement modifié le fichier "variables" et les Dockerfile respectifs.
+Les images existent déjà sur le Docker Hub sous l'id docker "reseaucerta" mais vous pouvez créer vos propres images avec le script create_image.sh, après avoir éventuellement modifié le fichier "variables" et les Dockerfile respectifs.
 
 Elles sont très légères :
 
 ```
 REPOSITORY               TAG       SIZE
-aporaf/routeurdebian12   lab1      425MB
-aporaf/serveurdebian12   lab1      424MB
-aporaf/clientdebian12    lab1      1.32GB
-aporaf/kalirolling       lab1      2.23GB
-aporaf/basedebian12      1.0       421MB
+reseaucerta/routeurdebian12   lab1      425MB
+reseaucerta/serveurdebian12   lab1      424MB
+reseaucerta/clientdebian12    lab1      1.32GB
+reseaucerta/kalirolling       lab1      2.23GB
+reseaucerta/basedebian12      1.0       421MB
 ```
 
-Pour créer une image personnalisée (après avoir modifié le variables nécessaires)
+Pour créer une image personnalisée (après avoir modifié les variables nécessaires)
 
 `gestion_lab1.sh -i ROUTEUR|SERVEUR|CLIENT|KALI|BASE`
 
@@ -93,12 +93,13 @@ Pour créer une image personnalisée (après avoir modifié le variables nécess
 
 - Basée sur kalilinux/kali-rolling.
 - Intègre XFCE4 et XRDP.
-- Intègre les meta-paquets core par défaut (le script de création de l'image permet d'intégrer n'importe quel meta-paquets).
-- Intègre systemd (car le lab en a besoin).
-- Gère les locales française et le timezone Europe/Paris.
+- Intègre les meta-paquets "core" par défaut (le script de création de l'image permet d'intégrer n'importe quel meta-paquets).
+- Intègre systemd.
+- Gère les locales françaises et la timezone Europe/Paris.
 - Installe sudo et d'autres outils nécessaire aux TP du labo ainsi que Wireshark et Firefox.
 - Lance SSH.
 - Crée le compte "non root" utilisé dans le lab (par défaut "etusio").
+- Intègre ssh-mitm.
 
 ### Image ROUTEUR (fichier dockerfile_ROUTEUR)
 
@@ -109,9 +110,9 @@ Pour créer une image personnalisée (après avoir modifié le variables nécess
 ### Image SERVEUR (fichier dockerfile_SERVEUR)
 
 - Basée sur l'image de base.
-- Ajoute l'installation de bind9
-- Configure le serveur DNS
-- Les éléments de configuration sont basés sur l'adresse IP proposée dans le lab : 192.168.56.0/24
+- Ajoute l'installation de bind9.
+- Configure le serveur DNS.
+- Les éléments de configuration sont basés sur l'adresse IP proposée dans le lab : 192.168.56.0/24.
 
 ## Génération des conteneurs
 
