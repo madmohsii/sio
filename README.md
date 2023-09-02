@@ -65,11 +65,11 @@ REPOSITORY               TAG       SIZE
 reseaucerta/routeurdebian12   lab1      425MB
 reseaucerta/serveurdebian12   lab1      424MB
 reseaucerta/clientdebian12    lab1      1.32GB
-reseaucerta/kalirolling       lab1      2.23GB
+reseaucerta/kalirolling       lab1      2.39GB
 reseaucerta/basedebian12      1.0       421MB
 ```
 
-Pour créer une image personnalisée (après avoir modifié les variables nécessaires)
+Pour créer une image personnalisée (après avoir modifié les variables nécessaires) :
 
 `gestion_lab1.sh -i ROUTEUR|SERVEUR|CLIENT|KALI|BASE`
 
