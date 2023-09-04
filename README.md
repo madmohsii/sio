@@ -56,7 +56,7 @@ Il est nécessaire de configurer un client de bureau à distance.
 
 Il y a 4 images opérationnelles plus une image Debian 12 de base.
 
-Les images existent déjà sur le Docker Hub sous l'id docker "reseaucerta" mais vous pouvez créer vos propres images avec le script create_image.sh, après avoir éventuellement modifié le fichier "variables" et les Dockerfile respectifs.
+Les images existent déjà sur le Docker Hub sous l'id docker "reseaucerta" mais vous pouvez créer vos propres images après avoir éventuellement modifié les "variables" et les Dockerfile respectifs
 
 Elles sont très légères :
 
@@ -116,4 +116,4 @@ Pour créer une image personnalisée (après avoir modifié les variables néces
 
 ## Génération des conteneurs
 
-Voir fichier "active_lab1.sh".
+Voir les commentaires dans le fichier "gestion_lab1.sh".
