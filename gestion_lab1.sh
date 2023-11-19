@@ -86,7 +86,7 @@ SHOW_USAGE() {
     echo -e "Usage: bash $0 -c|-l|d|s|r|i <type de l'image>|h"
     echo -e "\t-c\t\tCrée le laboratoire. Ce dernier sera lancé à l'issue de la création. "
     echo -e "\t-l\t\tLance un laboratoire préalablement stoppé."
-    echo -e "\t-d\t\tSupprime le laboratoire. Les volumes sont également supprimés."
+    echo -e "\t-d\t\tSupprime le laboratoire. Les images et les volumes sont également supprimés."
     echo -e "\t-s\t\tStoppe le laboratoire."
     echo -e "\t-r\t\tRedémarre un laboratoire actif."
     echo -e "\t-i\t\tCrée une image personnalisée (mettre le type de l'image en majuscule) -i ROUTEUR|SERVEUR|CLIENT|KALI|BASE."
@@ -97,7 +97,7 @@ SHOW_USAGE() {
 while getopts "cldsri:h" option; do
     # -c Crée le laboratoire.
     # -l Lance le laboratoire.
-    # -d Supprime le laboratoire. les volumes sont également supprimés.
+    # -d Supprime le laboratoire, les images et les volumes sont également supprimés.
     # -s Stoppe le laboratoire.
     # -r Redémarre le laboratoire.
     # -i Type de l'image en majuscule  -i ROUTEUR|SERVEUR|CLIENT|KALI|BASE."
@@ -173,6 +173,86 @@ if [[ -z "$create" && -z "$launch" && -z "$delete" && -z "$stop" && -z "$restart
 fi
 
 # ##################################
+# Définition des fonctions
+# ##################################
+
+# Modification de la passerelle par défaut
+# Qui doit être (sauf pour le routeur), l'adresse IP du routeur
+MODIF_PASSERELLE() {
+    NOM_CONTENEUR=$1
+    docker exec --privileged "$NOM_CONTENEUR" ip route del default
+    docker exec --privileged "$NOM_CONTENEUR" ip route add default via "$IP_ROUTEUR"
+}
+
+# Modification des passerelles une fois tous les conteneurs créés
+MODIF_PASSERELLE_CONTENEURS() {
+    # On attend 5 secondes que le processus de démarrage du dernier conteneur soit complètement terminé
+    sleep 5
+    echo -e "\nModification des passerelles du serveur, de Kali et du client."
+    MODIF_PASSERELLE "$SERVEUR"
+    MODIF_PASSERELLE "$CLIENT"
+    MODIF_PASSERELLE "$KALI"
+}
+
+# Configuration des réseaux du routeur, du nat et des règles iptables
+CONFIGURATION_ROUTEUR() {
+    echo -e "\nConfiguration du routeur."
+    # Ajout de l'interface connectée au réseau interne - eth1
+    if ! (docker network inspect $NOM_RESEAU_INTERNE | grep $ROUTEUR >/dev/null); then
+        docker network connect $NOM_RESEAU_INTERNE --ip "$IP_ROUTEUR" "$ROUTEUR"
+        echo -e "Ajout de l'interface connectée au réseau interne... Fait"
+    else
+        echo -e "Interface connectée au réseau interne... Présente"
+
+    fi
+
+    # Activation du NAT sur le réseau connecté à l'infrastructure du BTS SIO
+    if ! (docker exec --privileged "$ROUTEUR" iptables -t nat -L | grep MASQUERADE >/dev/null); then
+        docker exec --privileged "$ROUTEUR" iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+        echo -e "Activation du NAT... Fait"
+    else
+        echo -e "NAT... Déjà activé"
+
+    fi
+
+    # Ajout des règles Iptables pour rediriger vers les conteneurs
+    if ! (docker exec --privileged "$ROUTEUR" iptables -t nat -L | grep dpt:"$SSH_PORT_SERVEUR" >/dev/null); then
+        docker exec --privileged "$ROUTEUR" iptables -t nat -A PREROUTING -p tcp --dport "$SSH_PORT_SERVEUR" -j DNAT --to-destination "$IP_SERVEUR":22
+        echo -e "Ajout de la redirection SSH du serveur... Fait"
+    else
+        echo -e "Redirection SSH du serveur... Présente"
+    fi
+
+    if ! (docker exec --privileged "$ROUTEUR" iptables -t nat -L | grep dpt:"$SSH_PORT_CLIENT" >/dev/null); then
+        docker exec --privileged "$ROUTEUR" iptables -t nat -A PREROUTING -p tcp --dport "$SSH_PORT_CLIENT" -j DNAT --to-destination "$IP_CLIENT":22
+        echo -e "Ajout de la redirection SSH du client... Fait"
+    else
+        echo -e "Redirection SSH du client... Présente"
+    fi
+
+    if ! (docker exec --privileged "$ROUTEUR" iptables -t nat -L | grep dpt:"$SSH_PORT_KALI" >/dev/null); then
+        docker exec --privileged "$ROUTEUR" iptables -t nat -A PREROUTING -p tcp --dport "$SSH_PORT_KALI" -j DNAT --to-destination "$IP_KALI":22
+        echo -e "Ajout de la redirection SSH de Kali... Fait"
+    else
+        echo -e "Redirection SSH de Kali... Présente"
+    fi
+
+    if ! (docker exec --privileged "$ROUTEUR" iptables -t nat -L | grep dpt:"$RDP_PORT_CLIENT" >/dev/null); then
+        docker exec --privileged "$ROUTEUR" iptables -t nat -A PREROUTING -p tcp --dport "$RDP_PORT_CLIENT" -j DNAT --to-destination "$IP_CLIENT":3389
+        echo -e "Ajout de la redirection RDP (bureau à distance) du client... Fait"
+    else
+        echo -e "Redirection RDP (bureau à distance) du client... Présente"
+    fi
+
+    if ! (docker exec --privileged "$ROUTEUR" iptables -t nat -L | grep dpt:"$RDP_PORT_KALI" >/dev/null); then
+        docker exec --privileged "$ROUTEUR" iptables -t nat -A PREROUTING -p tcp --dport "$RDP_PORT_KALI" -j DNAT --to-destination "$IP_KALI":3389
+        echo -e "Ajout de la redirection RDP (bureau à distance) de Kali... Fait"
+    else
+        echo -e "Redirection RDP (bureau à distance) de Kali... Présente"
+    fi
+}
+
+# ##################################
 # Création du laboratoire
 # ##################################
 
@@ -207,14 +287,6 @@ if [ -n "$create" ]; then
             "$NOM_RESEAU_INTERNE"
     fi
 
-    # Fonction qui modifie la passerelle par défaut
-    # Qui doit être (sauf pour le routeur), l'adresse IP du routeur
-    MODIF_PASSERELLE() {
-        NOM_CONTENEUR=$1
-        docker exec --privileged "$NOM_CONTENEUR" ip route del default
-        docker exec --privileged "$NOM_CONTENEUR" ip route add default via "$IP_ROUTEUR"
-    }
-
     # Lancement des conteneurs après les avoir supprimés s'ils existent
     # L'option -t permet d'attribuer un pseudo-TTY (elle n'est pas obligatoire)
     # Cela donne des logs codés par couleur que l'on peut consulter avec docker logs
@@ -241,7 +313,7 @@ if [ -n "$create" ]; then
         fi
     done
 
-    echo -e "\nLancement et configuration du routeur"
+    echo -e "\nLancement du routeur"
     # Lancement du routeur
     # Le routeur est connecté au réseau de l'infrastructure du BTS SIO - eth0 (réseau bridge par défaut de Docker)
     # Adresse IP en DHCP
@@ -275,20 +347,7 @@ if [ -n "$create" ]; then
         exit 1
     fi
 
-    # Ajout de la carte connectée au réseau interne - eth1
-    docker network connect $NOM_RESEAU_INTERNE --ip "$IP_ROUTEUR" "$ROUTEUR"
-
-    # Activation du NAT sur le réseau connecté à l'infrastructure du BTS SIO
-    docker exec --privileged "$ROUTEUR" iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-
-    # Ajout des règles Iptables pour rediriger vers les conteneurs
-    docker exec --privileged "$ROUTEUR" iptables -t nat -A PREROUTING -p tcp --dport "$SSH_PORT_SERVEUR" -j DNAT --to-destination "$IP_SERVEUR":22
-    docker exec --privileged "$ROUTEUR" iptables -t nat -A PREROUTING -p tcp --dport "$SSH_PORT_CLIENT" -j DNAT --to-destination "$IP_CLIENT":22
-    docker exec --privileged "$ROUTEUR" iptables -t nat -A PREROUTING -p tcp --dport "$SSH_PORT_KALI" -j DNAT --to-destination "$IP_KALI":22
-    docker exec --privileged "$ROUTEUR" iptables -t nat -A PREROUTING -p tcp --dport "$RDP_PORT_CLIENT" -j DNAT --to-destination "$IP_CLIENT":3389
-    docker exec --privileged "$ROUTEUR" iptables -t nat -A PREROUTING -p tcp --dport "$RDP_PORT_KALI" -j DNAT --to-destination "$IP_KALI":3389
-
-    echo -e "\nLancement et configuration du serveur"
+    echo -e "\nLancement du serveur"
     # Lancement du serveur
     if (docker run --name "$SERVEUR" \
         --pull always \
@@ -314,10 +373,7 @@ if [ -n "$create" ]; then
         exit 1
     fi
 
-    # Modification de la passerelle par défaut
-    MODIF_PASSERELLE "$SERVEUR"
-
-    echo -e "\nLancement et configuration du client"
+    echo -e "\nLancement du client"
     # Lancement du client
     if (docker run --name "$CLIENT" \
         --pull always \
@@ -343,10 +399,7 @@ if [ -n "$create" ]; then
         exit 1
     fi
 
-    # Modification de la passerelle par défaut
-    MODIF_PASSERELLE "$CLIENT"
-
-    echo -e "\nLancement et configuration de Kali"
+    echo -e "\nLancement de Kali"
     # Lancement de Kali
     if (docker run --name "$KALI" \
         --pull always \
@@ -372,8 +425,12 @@ if [ -n "$create" ]; then
         exit 1
     fi
 
-    # Modification de la passerelle par défaut
-    MODIF_PASSERELLE "$KALI"
+    # Modification des passerelles
+    MODIF_PASSERELLE_CONTENEURS
+
+    # Ajout des règles spécifiques pour le routeur
+    CONFIGURATION_ROUTEUR
+
 fi
 
 # ##################################
@@ -388,6 +445,13 @@ if [ -n "$launch" ]; then
             echo -e "Conteneur $conteneur... Démarré."
         fi
     done
+
+    # Modification éventuelle des passerelles
+    MODIF_PASSERELLE_CONTENEURS
+
+    # Ajout éventuel des règles spécifiques pour le routeur
+    CONFIGURATION_ROUTEUR
+
 fi
 
 # ##################################
@@ -460,6 +524,12 @@ if [ -n "$restart" ]; then
             echo -e "Conteneur $conteneur... Redémarré."
         fi
     done
+
+    # Modification éventuelle des passerelles
+    MODIF_PASSERELLE_CONTENEURS
+
+    # Ajout éventuel des règles spécifiques pour le routeur
+    CONFIGURATION_ROUTEUR
 
 fi
 
