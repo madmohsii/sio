@@ -4,7 +4,7 @@
 
 Sur un poste où Docker est installé :
 
-1. Récupérer les scripts via git clone (git clone <https://forge.aeif.fr/btssio-labos-kali/lab1.git>).
+1. Récupérer les scripts via git clone (git clone <https://forge.apps.education.fr/reseau-certa/bts-sio/labos-kali-docker/lab1.git>).
 1. Se déplacer dans le dossier "lab1" créé.
 1. Usage du script "gestion_lab1.sh" :
 
